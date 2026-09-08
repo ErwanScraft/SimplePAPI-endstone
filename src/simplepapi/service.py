@@ -12,20 +12,26 @@ if TYPE_CHECKING:
     from endstone.plugin import Plugin
 
 
-class PlaceholderAPI(Service):
-    """Core PlaceholderAPI service."""
+class SimplePAPIService(Service):
+    """Core service responsible for registering and resolving placeholders."""
 
     SERVICE_NAME = "simplepapi"
 
     _PLACEHOLDER_PATTERN = re.compile(
-        r"%([a-zA-Z0-9_]+)(?:_([a-zA-Z0-9_]+))?%"
+        r"%([a-zA-Z0-9]+)_([a-zA-Z0-9_]+)%"
     )
+    _IDENTIFIER_PATTERN = re.compile(r"^[a-z0-9]+$")
 
     def __init__(self) -> None:
         super().__init__()
+
         self._expansions: dict[str, PlaceholderExpansion] = {}
         self._owners: dict[str, Plugin] = {}
-        self.active = False
+        self._active = False
+
+    @property
+    def active(self) -> bool:
+        return self._active
 
     @property
     def expansions(self) -> tuple[PlaceholderExpansion, ...]:
@@ -39,38 +45,37 @@ class PlaceholderAPI(Service):
         self,
         plugin: Plugin,
         expansion: PlaceholderExpansion,
-    ) -> bool:
+    ) -> None:
         identifier = expansion.identifier.strip().lower()
 
         if not identifier:
             raise ValueError("Expansion identifier cannot be empty.")
 
+        if not self._IDENTIFIER_PATTERN.fullmatch(identifier):
+            raise ValueError(
+                f"Invalid expansion identifier: {identifier!r}"
+            )
+
         if identifier in self._expansions:
-            return False
+            raise ValueError(
+                f"Expansion already registered: {identifier!r}"
+            )
 
         self._expansions[identifier] = expansion
         self._owners[identifier] = plugin
 
-        return True
-
-    def unregister_expansion(
-        self,
-        identifier: str,
-    ) -> bool:
-        identifier = identifier.lower()
+    def unregister_expansion(self, identifier: str) -> bool:
+        identifier = identifier.strip().lower()
 
         if identifier not in self._expansions:
             return False
 
-        self._expansions.pop(identifier)
-        self._owners.pop(identifier, None)
+        del self._expansions[identifier]
+        del self._owners[identifier]
 
         return True
 
-    def unregister_expansions(
-        self,
-        plugin: Plugin,
-    ) -> None:
+    def unregister_expansions(self, plugin: Plugin) -> None:
         identifiers = [
             identifier
             for identifier, owner in self._owners.items()
@@ -85,7 +90,9 @@ class PlaceholderAPI(Service):
         player: Player | None,
         text: str,
     ) -> str:
-        if not text or not self.active:
+        """Replace all registered placeholders in the given text."""
+
+        if not self._active or not text:
             return text
 
         return self._PLACEHOLDER_PATTERN.sub(
@@ -99,17 +106,14 @@ class PlaceholderAPI(Service):
         match: re.Match[str],
     ) -> str:
         identifier = match.group(1).lower()
-        params = match.group(2) or ""
+        params = match.group(2).lower()
 
         expansion = self._expansions.get(identifier)
 
         if expansion is None:
             return match.group(0)
 
-        try:
-            value = expansion.on_request(player, params)
-        except Exception:
-            return match.group(0)
+        value = expansion.on_request(player, params)
 
         if value is None:
             return match.group(0)
@@ -117,9 +121,9 @@ class PlaceholderAPI(Service):
         return str(value)
 
     def activate(self) -> None:
-        self.active = True
+        self._active = True
 
     def deactivate(self) -> None:
-        self.active = False
+        self._active = False
         self._expansions.clear()
         self._owners.clear()

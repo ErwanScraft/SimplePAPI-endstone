@@ -6,6 +6,8 @@ from ..expansion import PlaceholderExpansion
 
 
 class PlayerExpansion(PlaceholderExpansion):
+    """Provides player-related placeholders."""
+
     identifier = "player"
     author = "ErwanScraft"
     version = "1.0.0"

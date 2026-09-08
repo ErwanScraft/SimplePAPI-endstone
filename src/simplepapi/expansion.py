@@ -18,9 +18,5 @@ class PlaceholderExpansion(ABC):
         player: Player | None,
         params: str,
     ) -> str | None:
-        """
-        Resolve a placeholder request.
-
-        Returning None means the placeholder could not be resolved.
-        """
+        """Resolve a placeholder request."""
         raise NotImplementedError
