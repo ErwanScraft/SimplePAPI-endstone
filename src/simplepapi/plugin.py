@@ -22,32 +22,30 @@ class SimplePAPIPlugin(Plugin):
         self._service = SimplePAPIService()
 
     def on_enable(self) -> None:
-        service_manager = self.server.service_manager
-
         self.server.service_manager.register(
-            PlaceholderAPI.SERVICE_NAME,
+            SimplePAPIService.SERVICE_NAME,
             self._service,
             self,
             ServicePriority.NORMAL,
         )
-        
+    
         self._service.register_expansion(
             self,
             PlayerExpansion(),
         )
-        
+    
         self._service.register_expansion(
             self,
             ServerExpansion(self.server),
         )
-        
+    
         self._service.register_expansion(
             self,
             StonePermsExpansion(self.server),
         )
-        
+    
         self._service.activate()
-
+    
         self.logger.info(
             f"SimplePAPI enabled with "
             f"{len(self._service.expansions)} expansions."
@@ -56,14 +54,3 @@ class SimplePAPIPlugin(Plugin):
     def on_disable(self) -> None:
         self._service.deactivate()
         self.server.service_manager.unregister_all(self)
-
-    def _register_expansions(self) -> None:
-        self._service.register_expansion(
-            self,
-            PlayerExpansion(),
-        )
-
-        self._service.register_expansion(
-            self,
-            ServerExpansion(self.server),
-        )
