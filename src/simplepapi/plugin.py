@@ -2,7 +2,11 @@ from __future__ import annotations
 
 from endstone.plugin import Plugin, ServicePriority
 
-from .expansions import PlayerExpansion, ServerExpansion
+from .expansions import (
+    PlayerExpansion,
+    ServerExpansion,
+    StonePermsExpansion,
+)
 from .service import SimplePAPIService
 
 
@@ -10,6 +14,7 @@ class SimplePAPIPlugin(Plugin):
     """SimplePAPI Endstone plugin."""
 
     api_version = "0.11"
+    soft_depend = ["stoneperms"]
 
     def __init__(self) -> None:
         super().__init__()
@@ -19,14 +24,28 @@ class SimplePAPIPlugin(Plugin):
     def on_enable(self) -> None:
         service_manager = self.server.service_manager
 
-        service_manager.register(
-            SimplePAPIService.SERVICE_NAME,
+        self.server.service_manager.register(
+            PlaceholderAPI.SERVICE_NAME,
             self._service,
             self,
             ServicePriority.NORMAL,
         )
-
-        self._register_expansions()
+        
+        self._service.register_expansion(
+            self,
+            PlayerExpansion(),
+        )
+        
+        self._service.register_expansion(
+            self,
+            ServerExpansion(self.server),
+        )
+        
+        self._service.register_expansion(
+            self,
+            StonePermsExpansion(self.server),
+        )
+        
         self._service.activate()
 
         self.logger.info(
